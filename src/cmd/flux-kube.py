@@ -70,7 +70,7 @@ class GetDeploymentsCmd(KubeCmd):
         depl_list = v1_depl.get (namespace='milroy1')
         for depl in depl_list.items:
             print(depl.metadata.name) 
-            
+
         print('Got info on deployments')
 
 
