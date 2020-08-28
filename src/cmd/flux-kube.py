@@ -65,12 +65,12 @@ class GetDeploymentsCmd(KubeCmd):
     def __init__(self):
         super().__init__()
 
+    def main(self, args):
         v1_depl = self.dyn_client.resources.get (api_version='v1', kind='Deployment')
         depl_list = v1_depl.get (namespace='milroy1')
         for depl in depl_list.items:
             print(depl.metadata.name) 
-
-    def main(self, args):
+            
         print('Got info on deployments')
 
 
