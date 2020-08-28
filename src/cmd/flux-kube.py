@@ -16,8 +16,10 @@ except ImportError:
     sys.exit (1)
 
 try:
-    from openshift.dynamic import DynamicClient                  
-except ImportError:
+    from openshift.dynamic import DynamicClient
+    import openshift as oc
+except ImportError as e:
+    print (e)
     print ('Error: OpenShift Python client not installed')
     sys.exit (1)
 
@@ -31,4 +33,15 @@ from itertools import chain
 
 import flux
 
-print ('testing')
+k8s_client = config.new_client_from_config ()
+try:
+    dyn_client = DynamicClient (k8s_client)
+except client.rest.ApiException as e:
+    print ('You must be logged in to the K8s or OpenShift cluster to continue')
+    sys.exit (1)
+
+v1_depl = dyn_client.resources.get (api_version='v1', kind='Deployment')
+depl_list = v1_depl.get (namespace='milroy1')
+
+for depl in depl_list.items:
+    print (depl.metadata.name)
