@@ -17,7 +17,6 @@ except ImportError:
 
 try:
     from openshift.dynamic import DynamicClient 
-    import openshift as oc                 
 except ImportError as e:
     print (e)
     print ('Error: OpenShift Python client not installed')
@@ -30,14 +29,6 @@ import argparse
 import flux
 from flux import util
 from flux import debugged
-
-class GetServerAction(argparse.Action):
-    """Convenience class 
-    """
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        print("serveraction")
-
 
 class KubeCmd:
     """
@@ -54,11 +45,6 @@ class KubeCmd:
             print ('You must be logged in to the K8s or OpenShift cluster to continue')
             sys.exit (1)
 
-        v1_depl = self.dyn_client.resources.get (api_version='v1', kind='Deployment')
-        depl_list = v1_depl.get (namespace='milroy1')
-        for depl in depl_list.items:
-            print(depl.metadata.name)
-
     @staticmethod
     def create_parser(exclude_io=False):
         """
@@ -71,7 +57,7 @@ class KubeCmd:
     def get_parser(self):
         return self.parser
 
-class GetServerCmd(KubeCmd):
+class GetDeploymentsCmd(KubeCmd):
     """
     GetServerCmd gets K8s server info ...
     """
@@ -79,15 +65,13 @@ class GetServerCmd(KubeCmd):
     def __init__(self):
         super().__init__()
 
-        self.parser.add_argument(
-            "--get-apiserver",
-            type=str,
-            action=GetServerAction,
-            help="Get API server info",
-        )
+        v1_depl = self.dyn_client.resources.get (api_version='v1', kind='Deployment')
+        depl_list = v1_depl.get (namespace='milroy1')
+        for depl in depl_list.items:
+            print(depl.metadata.name) 
 
     def main(self, args):
-        print('Got server info')
+        print('Got info on deployments')
 
 
 LOGGER = logging.getLogger("flux-kube")
@@ -109,14 +93,14 @@ def main():
     )
     subparsers.required = True
 
-    getserver = GetServerCmd()
-    getserver_parser_sub = subparsers.add_parser(
-        "getserver",
-        parents=[getserver.get_parser()],
+    getdeployments = GetDeploymentsCmd()
+    getdeployments_parser_sub = subparsers.add_parser(
+        "getdeployments",
+        parents=[getdeployments.get_parser()],
         help="get K8s API server",
         formatter_class=flux.util.help_formatter(),
     )
-    getserver_parser_sub.set_defaults(func=getserver.main)
+    getdeployments_parser_sub.set_defaults(func=getdeployments.main)
 
     args = parser.parse_args()
     args.func(args)
@@ -124,3 +108,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
