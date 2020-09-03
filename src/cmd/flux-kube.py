@@ -1,5 +1,5 @@
 ##############################################################
-# Copyright 2019 Lawrence Livermore National Security, LLC
+# Copyright 2020 Lawrence Livermore National Security, LLC
 # (c.f. AUTHORS, NOTICE.LLNS, COPYING)
 #
 # This file is part of the Flux resource manager framework.
@@ -9,26 +9,14 @@
 ##############################################################
 
 import sys
-try:
-    from kubernetes import client, config
-except ImportError:
-    print ('Error: K8s Python client not installed')
-    sys.exit (1)
-
-try:
-    from openshift.dynamic import DynamicClient 
-except ImportError as e:
-    print (e)
-    print ('Error: OpenShift Python client not installed')
-    sys.exit (1)
-
 import os
 import logging
 import argparse
 
 import flux
 from flux import util
-from flux import debugged
+from kubernetes import client, config
+from openshift.dynamic import DynamicClient
 
 class KubeCmd:
     """
@@ -42,8 +30,11 @@ class KubeCmd:
         try:
             self.dyn_client = DynamicClient (k8s_client)
         except client.rest.ApiException as e:
-            print ('You must be logged in to the K8s or OpenShift cluster to continue')
-            sys.exit (1)
+            if e.status == 403:
+                raise Exception("You must be logged in to the K8s or OpenShift"
+                                   " cluster to continue")
+            else:
+                raise
 
     @staticmethod
     def create_parser(exclude_io=False):
@@ -65,14 +56,29 @@ class GetDeploymentsCmd(KubeCmd):
     def __init__(self):
         super().__init__()
 
+        self.parser.add_argument(
+            "-n",
+            "--namespace",
+            type=str,
+            metavar="N",
+            help="Namespace of deployment",
+        )
+
     def main(self, args):
-        v1_depl = self.dyn_client.resources.get (api_version='v1', kind='Deployment')
-        depl_list = v1_depl.get (namespace='milroy1')
-        for depl in depl_list.items:
-            print(depl.metadata.name) 
+        v1_depl = self.dyn_client.resources.get(api_version="v1", 
+                                                kind="Deployment")
+        try:
+            depl_list = v1_depl.get(namespace=args.namespace)
+        except client.rest.ApiException as e:
+            raise
 
-        print('Got info on deployments')
-
+        if depl_list.items:
+            for depl in depl_list.items:
+                print("Deployment name:", depl.metadata.name)
+                for item in depl:
+                    print(item)
+        else:
+            print("No deployments in namespace", args.namespace)
 
 LOGGER = logging.getLogger("flux-kube")
 
@@ -97,7 +103,7 @@ def main():
     getdeployments_parser_sub = subparsers.add_parser(
         "getdeployments",
         parents=[getdeployments.get_parser()],
-        help="get K8s API server",
+        help="get K8s deployment details",
         formatter_class=flux.util.help_formatter(),
     )
     getdeployments_parser_sub.set_defaults(func=getdeployments.main)
@@ -108,4 +114,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
