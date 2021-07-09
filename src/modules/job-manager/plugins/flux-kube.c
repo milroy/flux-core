@@ -93,7 +93,7 @@ static int sched_cb (flux_plugin_t *p,
                      flux_plugin_arg_t *args,
                      void *arg)
 {
-    const char *R = NULL;
+    const char *R, *jobspec = NULL;
     flux_jobid_t id;
 
     /*  If flux-kube::R set on this job then commit R to KVS
@@ -104,6 +104,10 @@ static int sched_cb (flux_plugin_t *p,
                                        "flux-kube::R")))
         return 0;
 
+    if (!(jobspec = flux_jobtap_job_aux_get (p,
+                                       FLUX_JOBTAP_CURRENT_JOB,
+                                       "flux-kube::jobspec")))
+        return 0;
 
     if (flux_plugin_arg_unpack (args,
                                 FLUX_PLUGIN_ARG_IN,
@@ -116,6 +120,8 @@ static int sched_cb (flux_plugin_t *p,
                                      flux_plugin_arg_strerror (args));
         return -1;
     }
+
+    printf("jobspec is %s\n", jobspec);
 
     if (alloc_start (p, id, R) < 0)
         flux_jobtap_raise_exception (p, id, "alloc", 0,
@@ -141,7 +147,7 @@ static int cleanup_cb (flux_plugin_t *p,
      */
     if (flux_jobtap_job_aux_get (p,
                                  FLUX_JOBTAP_CURRENT_JOB,
-                                 "alloc-bypass::free")) {
+                                 "flux-kube::free")) {
         if (flux_jobtap_event_post_pack (p,
                                          FLUX_JOBTAP_CURRENT_JOB,
                                          "free",
@@ -157,30 +163,28 @@ static int validate_cb (flux_plugin_t *p,
                         flux_plugin_arg_t *args,
                         void *arg)
 {
-    json_t *R = NULL;
-    char *s;
-    struct rlist *rl;
-    json_error_t error;
+    int fluxkube = 0;
+    json_t *jobspec = NULL;
+    char *js, *s;
     uint32_t userid = (uint32_t) -1;
 
     if (flux_plugin_arg_unpack (args,
                                 FLUX_PLUGIN_ARG_IN,
-                                "{s:i s:{s:{s:{s?{s?o}}}}}",
+                                "{s:i s:{s:{s:{s:i}}}}",
                                 "userid", &userid,
                                 "jobspec",
                                  "attributes",
                                   "system",
-                                   "flux-kube",
-                                    "R", &R) < 0) {
+                                   "flux-kube", &fluxkube) < 0) {
         return flux_jobtap_reject_job (p,
                                        args,
-                                       "invalid system.flux-kube.R: %s",
+                                       "invalid system.flux-kube: %s",
                                        flux_plugin_arg_strerror (args));
     }
 
-    /*  Nothing to do if no R provided
+    /*  Nothing to do if not fluxkube
      */
-    if (R == NULL)
+    if (!fluxkube)
         return 0;
 
     if (userid != getuid ())
@@ -188,25 +192,39 @@ static int validate_cb (flux_plugin_t *p,
                                        args,
                                        "Guest user cannot use alloc bypass");
 
-    /*  Sanity check R for validity
-     */
-    if (!(rl = rlist_from_json (R, &error)))
+    if (flux_plugin_arg_unpack (args,
+                                FLUX_PLUGIN_ARG_IN,
+                                "{s:o}",
+                                "jobspec", &jobspec) < 0) {
         return flux_jobtap_reject_job (p,
                                        args,
-                                       "flux-kube: invalid R: %s",
-                                       error.text);
-    rlist_destroy (rl);
-
+                                       "invalid jobspec: %s",
+                                       flux_plugin_arg_strerror (args));
+    }
+   /*  Store jobspec in job structure to avoid re-fetching from plugin args
+     *   in job.state.sched callback.
+     */
+    if (!(js = json_dumps (jobspec, 0))
+        || flux_jobtap_job_aux_set (p,
+                                    FLUX_JOBTAP_CURRENT_JOB,
+                                    "flux-kube::jobspec",
+                                    js,
+                                    free) < 0) {
+        free (js);
+        return flux_jobtap_reject_job (p,
+                                       args,
+                                       "failed to capture flux-kube jobspec: %s",
+                                       strerror (errno));
+    }
     /*  Store R string in job structure to avoid re-fetching from plugin args
      *   in job.state.sched callback.
      */
-    if (!(s = json_dumps (R, 0))
-        || flux_jobtap_job_aux_set (p,
+    s = "{\"version\": 1, \"execution\": {\"R_lite\": [{\"rank\": \"0\", \"children\": {\"core\": \"0\"}}], \"starttime\": 0.0, \"expiration\": 0.0, \"nodelist\": [\"kubernetes\"]}}";
+    if (flux_jobtap_job_aux_set (p,
                                     FLUX_JOBTAP_CURRENT_JOB,
-                                    "flux-kube::R",
-                                    s,
+                                    "flux-kube::R", 
+                                    s, 
                                     free) < 0) {
-        free (s);
         return flux_jobtap_reject_job (p,
                                        args,
                                        "failed to capture flux-kube R: %s",
