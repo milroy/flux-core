@@ -166,9 +166,10 @@ static int validate_cb (flux_plugin_t *p,
                         void *arg)
 {
     int fluxkube = 0;
-    json_t *jobspec = NULL;
-    char *js, *s;
+    json_t *jobspec, *json_s = NULL;
+    char *js, *s, *s2;
     uint32_t userid = (uint32_t) -1;
+    json_error_t error;
 
     if (flux_plugin_arg_unpack (args,
                                 FLUX_PLUGIN_ARG_IN,
@@ -231,11 +232,18 @@ static int validate_cb (flux_plugin_t *p,
               \"expiration\": 0.0,\
               \"nodelist\":\
               [\"kubernetes\"]}}";
-    if (flux_jobtap_job_aux_set (p,
+    if (!(json_s = json_loads (s, 0, &error)))
+        return flux_jobtap_reject_job (p,
+                                       args,
+                                       "flux-kube: invalid R: %s",
+                                       error.text);        
+    if (!(s2 = json_dumps (json_s, 0)) 
+        || flux_jobtap_job_aux_set (p,
                                  FLUX_JOBTAP_CURRENT_JOB,
                                  "flux-kube::R", 
-                                 s, 
+                                 s2, 
                                  free) < 0) {
+        free (s2);
         return flux_jobtap_reject_job (p,
                                        args,
                                        "failed to capture flux-kube R: %s",
