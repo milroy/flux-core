@@ -104,6 +104,8 @@ static int sched_cb (flux_plugin_t *p,
                                        "flux-kube::R")))
         return 0;
 
+    printf("R is %s\n", R);
+
     if (!(jobspec = flux_jobtap_job_aux_get (p,
                                        FLUX_JOBTAP_CURRENT_JOB,
                                        "flux-kube::jobspec")))
@@ -219,12 +221,21 @@ static int validate_cb (flux_plugin_t *p,
     /*  Store R string in job structure to avoid re-fetching from plugin args
      *   in job.state.sched callback.
      */
-    s = "{\"version\": 1, \"execution\": {\"R_lite\": [{\"rank\": \"0\", \"children\": {\"core\": \"0\"}}], \"starttime\": 0.0, \"expiration\": 0.0, \"nodelist\": [\"kubernetes\"]}}";
+    s = "{\"version\": 1,\
+          \"execution\":\
+            {\"R_lite\":\
+              [{\"rank\": \"0\",\
+                \"children\":\
+                  {\"core\": \"0\"}}],\
+              \"starttime\": 0.0,\
+              \"expiration\": 0.0,\
+              \"nodelist\":\
+              [\"kubernetes\"]}}";
     if (flux_jobtap_job_aux_set (p,
-                                    FLUX_JOBTAP_CURRENT_JOB,
-                                    "flux-kube::R", 
-                                    s, 
-                                    free) < 0) {
+                                 FLUX_JOBTAP_CURRENT_JOB,
+                                 "flux-kube::R", 
+                                 s, 
+                                 free) < 0) {
         return flux_jobtap_reject_job (p,
                                        args,
                                        "failed to capture flux-kube R: %s",
