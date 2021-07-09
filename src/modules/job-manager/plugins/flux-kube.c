@@ -21,8 +21,6 @@
 #include <flux/core.h>
 #include <flux/jobtap.h>
 
-#include "src/common/librlist/rlist.h"
-
 static void alloc_continuation (flux_future_t *f, void *arg)
 {
     flux_plugin_t *p = arg;
@@ -239,10 +237,10 @@ static int validate_cb (flux_plugin_t *p,
                                        error.text);        
     if (!(s2 = json_dumps (json_s, 0)) 
         || flux_jobtap_job_aux_set (p,
-                                 FLUX_JOBTAP_CURRENT_JOB,
-                                 "flux-kube::R", 
-                                 s2, 
-                                 free) < 0) {
+                                    FLUX_JOBTAP_CURRENT_JOB,
+                                    "flux-kube::R", 
+                                    s2, 
+                                    free) < 0) {
         free (s2);
         return flux_jobtap_reject_job (p,
                                        args,

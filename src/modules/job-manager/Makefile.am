@@ -102,8 +102,7 @@ plugins_alloc_bypass_la_LDFLAGS = \
 plugins_flux_kube_la_SOURCES = \
 	plugins/flux-kube.c
 plugins_flux_kube_la_LIBADD = \
-	$(top_builddir)/src/common/libflux-internal.la \
-	$(top_builddir)/src/common/librlist/librlist.la
+	$(top_builddir)/src/common/libflux-internal.la
 plugins_flux_kube_la_LDFLAGS = \
 	$(fluxplugin_ldflags) \
 	-module
