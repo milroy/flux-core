@@ -164,10 +164,9 @@ static int validate_cb (flux_plugin_t *p,
                         void *arg)
 {
     int fluxkube = 0;
-    json_t *jobspec, *json_s = NULL;
-    char *js, *s, *s2;
+    json_t *jobspec = NULL;
+    char *js, *s;
     uint32_t userid = (uint32_t) -1;
-    json_error_t error;
 
     if (flux_plugin_arg_unpack (args,
                                 FLUX_PLUGIN_ARG_IN,
@@ -220,33 +219,25 @@ static int validate_cb (flux_plugin_t *p,
     /*  Store R string in job structure to avoid re-fetching from plugin args
      *   in job.state.sched callback.
      */
-    s = "{\"version\": 1,\
-          \"execution\":\
-            {\"R_lite\":\
-              [{\"rank\": \"0\",\
-                \"children\":\
-                  {\"core\": \"0\"}}],\
-              \"starttime\": 0.0,\
-              \"expiration\": 0.0,\
-              \"nodelist\":\
-              [\"kubernetes\"]}}";
-    if (!(json_s = json_loads (s, 0, &error)))
-        return flux_jobtap_reject_job (p,
-                                       args,
-                                       "flux-kube: invalid R: %s",
-                                       error.text);        
-    if (!(s2 = json_dumps (json_s, 0)) 
-        || flux_jobtap_job_aux_set (p,
-                                    FLUX_JOBTAP_CURRENT_JOB,
-                                    "flux-kube::R", 
-                                    s2, 
-                                    free) < 0) {
-        free (s2);
+    s = "{\"version\": 1, "
+          "\"execution\": "
+            "{\"R_lite\": "
+              "[{\"rank\": \"0\", "
+                "\"children\": "
+                  "{\"core\": \"0\"}}], "
+              "\"starttime\": 0.0, "
+              "\"expiration\": 0.0, "
+              "\"nodelist\": "
+              "[\"kubernetes\"]}}";
+    if (flux_jobtap_job_aux_set (p,
+                                 FLUX_JOBTAP_CURRENT_JOB,
+                                 "flux-kube::R", 
+                                 strdup (s), 
+                                 free) < 0)
         return flux_jobtap_reject_job (p,
                                        args,
                                        "failed to capture flux-kube R: %s",
                                        strerror (errno));
-    }
     return 0;
 }
 
