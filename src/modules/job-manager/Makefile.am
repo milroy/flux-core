@@ -19,7 +19,8 @@ noinst_LTLIBRARIES = \
 
 jobtap_plugin_LTLIBRARIES = \
 	plugins/priority-hold.la \
-	plugins/alloc-bypass.la
+	plugins/alloc-bypass.la \
+	plugins/flux-kube.la
 
 job_manager_la_SOURCES = \
 	job-manager.c \
@@ -95,6 +96,15 @@ plugins_alloc_bypass_la_LIBADD = \
 	$(top_builddir)/src/common/libflux-internal.la \
 	$(top_builddir)/src/common/librlist/librlist.la
 plugins_alloc_bypass_la_LDFLAGS = \
+	$(fluxplugin_ldflags) \
+	-module
+
+plugins_flux_kube_la_SOURCES = \
+	plugins/flux-kube.c
+plugins_flux_kube_la_LIBADD = \
+	$(top_builddir)/src/common/libflux-internal.la \
+	$(top_builddir)/src/common/librlist/librlist.la
+plugins_flux_kube_la_LDFLAGS = \
 	$(fluxplugin_ldflags) \
 	-module
 
