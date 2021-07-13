@@ -170,7 +170,7 @@ static int validate_cb (flux_plugin_t *p,
 
     if (flux_plugin_arg_unpack (args,
                                 FLUX_PLUGIN_ARG_IN,
-                                "{s:i s:{s:{s:{s:i}}}}",
+                                "{s:i s:{s:{s:{s?i}}}}",
                                 "userid", &userid,
                                 "jobspec",
                                  "attributes",
